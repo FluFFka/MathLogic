@@ -375,7 +375,8 @@ def compute(st: SemanticTableaux, ind=0, output=False):
             extra_orders.append(False)
             new_st = SemanticTableaux(st.T, st.F + extra_F, st.closedT, st.closedF, st.order + extra_orders)
             return compute(new_st, ind+1, output)
-        
+    return False
+
 def is_valid_formula(string: str, output=False):
     formula = str_to_formula(string)
     return compute(SemanticTableaux([], [formula]), output=output)
