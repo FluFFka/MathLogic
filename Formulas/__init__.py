@@ -87,6 +87,12 @@ class Functional:
         for arg in self.args:
             arg.rename_variables(names, name_suffixes)
 
+func__ = -1
+def nextFunctional(args):
+    global func__
+    func__ += 1
+    return Functional('f' + str(func__), *args)
+
 
 class Predicate:
     def __init__(self, name, *args):
@@ -136,7 +142,7 @@ class Predicate:
 
 
 class Formula:
-    def __init__(self, operation, *formulas):        
+    def __init__(self, operation, *formulas):
         self.operation = operation
         self.formulas = list(formulas)
     def __str__(self):
@@ -238,6 +244,44 @@ class Formula:
                 self.operation, in_formula.operation = in_formula.operation, self.operation
                 self.formulas, in_formula.formulas = [in_formula], [self.formulas[0], in_formula.formulas[0]]
                 in_formula.move_quantifiers()
+    def transform_to_CNF(self):
+        for formula in self.formulas:
+            if isinstance(formula, Formula):
+                formula.transform_to_CNF()
+        if self.operation == 'V':
+            if isinstance(self.formulas[0], Formula) and self.formulas[0].operation == '&':
+                left1 = self.formulas[0].formulas[0]
+                left2 = self.formulas[0].formulas[1]
+                right = self.formulas[1]
+                self.operation = '&'
+                self.formulas = [Formula('V', left1, right), Formula('V', left2, right.copy())]
+                self.formulas[0].transform_to_CNF()
+                self.formulas[1].transform_to_CNF()
+            elif isinstance(self.formulas[1], Formula) and self.formulas[1].operation == '&':
+                left = self.formulas[0]
+                right1 = self.formulas[1].formulas[0]
+                right2 = self.formulas[1].formulas[1]
+                self.operation = '&'
+                self.formulas = [Formula('V', left, right1), Formula('V', left.copy(), right2)]
+                self.formulas[0].transform_to_CNF()
+                self.formulas[1].transform_to_CNF()
+    def transform_to_SNF(self, names, variables):
+        if self.operation[-1] == 'A':
+            variables.append(self.operation[:-1])
+            self.formulas[0].transform_to_SNF(names, variables)
+        elif self.operation[-1] == 'E':
+            names[self.operation[:-1]] = nextFunctional(variables)
+            self.formulas[0].transform_to_SNF(names, variables)
+            self.operation = self.formulas[0].operation
+            self.formulas = self.formulas[0].formulas
+        else:
+            for formula in self.formulas:
+                if isinstance(formula, Predicate):
+                    for name, term in names.items():
+                        formula.put_term(name, term)
+                else:
+                    formula.transform_to_SNF(names, variables)
+
             
 def isbinary(sym: str):
     return sym in ('V', '&', '>')
