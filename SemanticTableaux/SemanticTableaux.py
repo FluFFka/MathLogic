@@ -1,4 +1,5 @@
 indent = '    '
+available_functionals = ['f', 'g', 'h']
 
 class Constant:
     def __init__(self, name):
@@ -35,6 +36,50 @@ class Variable:
         return Variable(self.name)
 
 
+class Functional:
+    def __init__(self, name, *args):
+        self.name = name
+        self.args = list(args)
+    def __str__(self):
+        res = self.name + '('
+        str_args = []
+        for arg in self.args:
+            str_args.append(str(arg))
+        res += ','.join(str_args)
+        res += ')'
+        return res
+    def __eq__(self, other):
+        if not isinstance(other, Functional):
+            return False
+        if self.name != other.name:
+            return False
+        if len(self.args) != len(other.args):
+            return False
+        for i in range(len(self.args)):
+            if self.args[i] != other.args[i]:
+                return False
+        return True
+    def put_term(self, varname, term):
+        for i in range(len(self.args)):
+            if isinstance(self.args[i], Variable) and self.args[i].name == varname:
+                self.args[i] = term
+            elif isinstance(self.args[i], Functional):
+                self.args[i].put_term(varname, term)
+    def get_consts(self):
+        consts = []
+        for arg in self.args:
+            if isinstance(arg, Constant):
+                consts.append(arg)
+            elif isinstance(arg, Functional):
+                consts += arg.get_consts()
+        return list(set(consts))
+    def copy(self):
+        copies = []
+        for arg in self.args:
+            copies.append(arg.copy())
+        return Functional(self.name, *copies)
+
+
 class Predicate:
     def __init__(self, name, *args):
         self.name = name
@@ -62,11 +107,15 @@ class Predicate:
         for i in range(len(self.args)):
             if isinstance(self.args[i], Variable) and self.args[i].name == varname:
                 self.args[i] = term
+            elif isinstance(self.args[i], Functional):
+                self.args[i].put_term(varname, term)
     def get_consts(self):
         consts = []
         for arg in self.args:
             if isinstance(arg, Constant):
                 consts.append(arg)
+            elif isinstance(arg, Functional):
+                consts += arg.get_consts()
         return list(set(consts))
     def copy(self):
         copies = []
@@ -129,17 +178,21 @@ def priority(sym: str):
     print('Error in formula')
     exit(1)
 
+def isfunctional(sym: str):
+    return sym[-1] in available_functionals
+
 def ispredicate(sym: str):
     return sym.isupper() and not (sym in ('A', 'E', 'V'))
 
 def isvariable(sym: str):
-    return sym.islower()
+    return sym.islower() and not isfunctional(sym)
 
 def str_to_reverse_polish_notation(string: str):
     string = string.replace(' ', '').replace('->', '>')
     stack = ['#']
     curr_ind = 0
     out_queue = []
+    comma_stack = ['#']
     while curr_ind < len(string):
         if string[curr_ind] in ('A', 'E'):
             stack.append(string[curr_ind])
@@ -148,9 +201,11 @@ def str_to_reverse_polish_notation(string: str):
                 stack[-1] = string[curr_ind] + stack[-1]
             else:
                 out_queue.append(string[curr_ind])
-        elif ispredicate(string[curr_ind]):
+        elif ispredicate(string[curr_ind]) or isfunctional(string[curr_ind]):
+            comma_stack.append(0)
             stack.append(string[curr_ind])
         elif string[curr_ind] == ',':
+            comma_stack[-1] += 1
             while stack[-1] != '(':
                 sym = stack.pop()
                 out_queue.append(sym)
@@ -174,6 +229,12 @@ def str_to_reverse_polish_notation(string: str):
             stack.pop()
             if ispredicate(stack[-1]):
                 sym = stack.pop()
+                comma_stack.pop()
+                out_queue.append(sym)
+            elif isfunctional(stack[-1]):
+                sym = stack.pop()
+                argnum = comma_stack.pop() + 1
+                sym = str(argnum) + sym
                 out_queue.append(sym)
         curr_ind += 1
     while stack[-1] != '#':
@@ -185,6 +246,7 @@ def str_to_reverse_polish_notation(string: str):
 
 def str_to_formula(string: str):
     queue = str_to_reverse_polish_notation(string)
+    print(queue)
     stack = ['#']
     for sym in queue:
         if isvariable(sym): # Const
@@ -199,13 +261,26 @@ def str_to_formula(string: str):
             pp2 = stack.pop()
             pp1 = stack.pop()
             stack.append(Formula(sym, pp1, pp2))
-        else:
+        elif ispredicate(sym):
             name = sym
             arguments = []
-            while isinstance(stack[-1], Variable):  # Const
+            while isinstance(stack[-1], Variable) or isinstance(stack[-1], Functional) or isinstance(stack[-1], Constant):
                 pp = stack.pop()
                 arguments.append(pp)
             stack.append(Predicate(name, *arguments[::-1]))
+        elif isfunctional(sym):
+            name = sym[-1]
+            argnum = int(sym[:-1])
+            arguments = []
+            while (isinstance(stack[-1], Variable) or isinstance(stack[-1], Functional) or isinstance(stack[-1], Constant)) and (argnum > 0):
+                argnum -= 1
+                pp = stack.pop()
+                arguments.append(pp)
+            stack.append(Functional(name, *arguments[::-1]))
+        else:
+            print('Wrong symbols in input')
+            exit(1)
+        
     if len(stack) != 2:
         print('Wrong stack size')
         exit(1)
