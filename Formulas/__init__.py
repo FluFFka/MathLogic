@@ -223,7 +223,22 @@ class Formula:
         for formula in self.formulas:
             if isinstance(formula, Formula):
                 formula.move_negations()
-        
+    def move_quantifiers(self):
+        for formula in self.formulas:
+            if isinstance(formula, Formula):
+                formula.move_quantifiers()
+        if self.operation in ('V', '&'):
+            if isinstance(self.formulas[0], Formula) and self.formulas[0].operation[-1] in ('A', 'E'):
+                in_formula = self.formulas[0]
+                self.operation, in_formula.operation = in_formula.operation, self.operation
+                self.formulas, in_formula.formulas = [in_formula], [in_formula.formulas[0], self.formulas[1]]
+                in_formula.move_quantifiers()
+            elif isinstance(self.formulas[1], Formula) and self.formulas[1].operation[-1] in ('A', 'E'):
+                in_formula = self.formulas[1]
+                self.operation, in_formula.operation = in_formula.operation, self.operation
+                self.formulas, in_formula.formulas = [in_formula], [self.formulas[0], in_formula.formulas[0]]
+                in_formula.move_quantifiers()
+            
 def isbinary(sym: str):
     return sym in ('V', '&', '>')
 

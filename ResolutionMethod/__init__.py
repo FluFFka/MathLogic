@@ -16,7 +16,7 @@ def resolution_method(formula: Formula, output=False):
     formula = formula.formulas[0]
     if output:
         print('Move negations:', str(formula))
-    # formula.move_quantifiers()
-    # if output:
-    #     print('Move quantifiers:', str(formula))
+    formula.move_quantifiers()
+    if output:
+        print('Move quantifiers:', str(formula))
     return True
