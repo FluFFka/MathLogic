@@ -14,6 +14,8 @@ class Constant:
         return Constant(self.name)
     def __hash__(self):
         return hash(self.name)
+    def rename_variables(self, names, name_suffixes):
+        pass    # no variables
 
 const__ = -1
 def nextConst():
@@ -34,6 +36,9 @@ class Variable:
         return self.name == other.name
     def copy(self):
         return Variable(self.name)
+    def rename_variables(self, names, name_suffixes):
+        if self.name in names:
+            self.name = names[self.name]
 
 
 class Functional:
@@ -78,6 +83,9 @@ class Functional:
         for arg in self.args:
             copies.append(arg.copy())
         return Functional(self.name, *copies)
+    def rename_variables(self, names, name_suffixes):
+        for arg in self.args:
+            arg.rename_variables(names, name_suffixes)
 
 
 class Predicate:
@@ -122,6 +130,9 @@ class Predicate:
         for arg in self.args:
             copies.append(arg.copy())
         return Predicate(self.name, *copies)
+    def rename_variables(self, names, name_suffixes):
+        for arg in self.args:
+            arg.rename_variables(names, name_suffixes)
 
 
 class Formula:
@@ -133,7 +144,7 @@ class Formula:
         for formula in self.formulas:
             str_formulas.append(str(formula))
         if len(str_formulas) == 1:
-            res = self.operation[::-1] + '(' + str_formulas[0] + ')'
+            res = self.operation[-1] + self.operation[:-1] + '(' + str_formulas[0] + ')'
         elif len(str_formulas) == 2:
             if self.operation == '>':
                 res = '(' + str_formulas[0] + ' -> ' + str_formulas[1] + ')'
@@ -156,7 +167,63 @@ class Formula:
         for formula in self.formulas:
             copies.append(formula.copy())
         return Formula(self.operation, *copies)
-
+    def rename_variables(self, names, name_suffixes):
+        if self.operation[-1] in ('A', 'E'):
+            varname = self.operation[:-1]
+            if names.get(varname) is None:
+                if name_suffixes.get(varname) is None:
+                    name_suffixes[varname] = 0
+                else:
+                    name_suffixes[varname] += 1
+                names[varname] = varname + str(name_suffixes[varname])
+            else:
+                name_suffixes[varname] += 1
+            names[varname] = varname + str(name_suffixes[varname])
+            self.operation = names[varname] + self.operation[-1]
+        for formula in self.formulas:
+            formula.rename_variables(names.copy(), name_suffixes)
+    def remove_implications(self):
+        if self.operation == '>':
+            self.operation = 'V'
+            self.formulas[0] = Formula('~', self.formulas[0])
+        for formula in self.formulas:
+            if isinstance(formula, Formula):
+                formula.remove_implications()
+    def move_negations(self):
+        if self.operation == '~' and isinstance(self.formulas[0], Formula):
+            in_formula = self.formulas[0]
+            if in_formula.operation == '&':
+                self.operation = 'V'
+                self.formulas = [None, None]
+                self.formulas[0] = Formula('~', in_formula.formulas[0])
+                self.formulas[1] = Formula('~', in_formula.formulas[1])
+            elif in_formula.operation == 'V':
+                self.operation = '&'
+                self.formulas = [None, None]
+                self.formulas[0] = Formula('~', in_formula.formulas[0])
+                self.formulas[1] = Formula('~', in_formula.formulas[1])
+            elif in_formula.operation[-1] == 'E':
+                self.operation, in_formula.operation = in_formula.operation, self.operation
+                self.operation = self.operation[:-1] + 'A'
+            elif in_formula.operation[-1] == 'A':
+                self.operation, in_formula.operation = in_formula.operation, self.operation
+                self.operation = self.operation[:-1] + 'E'
+        for i in range(len(self.formulas)):
+            check_double_negation = True
+            while check_double_negation:
+                in_formula = self.formulas[i]
+                if isinstance(in_formula, Formula) and in_formula.operation == '~':
+                    in_in_formula = in_formula.formulas[0]
+                    if isinstance(in_in_formula, Formula) and in_in_formula.operation == '~':
+                        self.formulas[i] = in_in_formula.formulas[0]
+                    else:
+                        check_double_negation = False
+                else:
+                    check_double_negation = False
+        for formula in self.formulas:
+            if isinstance(formula, Formula):
+                formula.move_negations()
+        
 def isbinary(sym: str):
     return sym in ('V', '&', '>')
 

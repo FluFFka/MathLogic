@@ -107,7 +107,7 @@ def compute(st: SemanticTableaux, ind=0, output=False):
             return compute(new_st, ind+1, output)
         elif formula.operation[-1] == 'E':
             in_formula = formula.formulas[0].copy()
-            in_formula.put_term(formula.operation[0], nextConst())
+            in_formula.put_term(formula.operation[:-1], nextConst())
             new_st = SemanticTableaux(st.T + [in_formula], st.F, st.closedT, st.closedF, st.order + [True])
             return compute(new_st, ind+1, output)
         elif formula.operation[-1] == 'A':
@@ -116,7 +116,7 @@ def compute(st: SemanticTableaux, ind=0, output=False):
             for const in consts:
                 extra_orders.append(True)
                 in_formula = formula.formulas[0].copy()
-                in_formula.put_term(formula.operation[0], const)
+                in_formula.put_term(formula.operation[:-1], const)
                 extra_T.append(in_formula)
             extra_T.append(formula)
             extra_orders.append(True)
@@ -149,7 +149,7 @@ def compute(st: SemanticTableaux, ind=0, output=False):
             return compute(new_st, ind+1, output)
         elif formula.operation[-1] == 'A':
             in_formula = formula.formulas[0].copy()
-            in_formula.put_term(formula.operation[0], nextConst())
+            in_formula.put_term(formula.operation[:-1], nextConst())
             new_st = SemanticTableaux(st.T, st.F + [in_formula], st.closedT, st.closedF, st.order + [False])
             return compute(new_st, ind+1, output)
         elif formula.operation[-1] == 'E':
@@ -158,7 +158,7 @@ def compute(st: SemanticTableaux, ind=0, output=False):
             for const in consts:
                 extra_orders.append(False)
                 in_formula = formula.formulas[0].copy()
-                in_formula.put_term(formula.operation[0], const)
+                in_formula.put_term(formula.operation[:-1], const)
                 extra_F.append(in_formula)
             extra_F.append(formula)
             extra_orders.append(False)
