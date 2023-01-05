@@ -1,21 +1,18 @@
+indent = '    '
+
 class Constant:
     def __init__(self, name):
         self.name = name
-
-    def sstr(self, ind=0):
-        print(ind * ' ', self.name, sep='', end='')
-
+    def __str__(self):
+        return self.name
     def __eq__(self, other):
         if not isinstance(other, Constant):
             return False
         return self.name == other.name
-
     def copy(self):
         return Constant(self.name)
-
     def __hash__(self):
         return hash(self.name)
-
 
 const__ = -1
 def nextConst():
@@ -28,10 +25,8 @@ start_const = nextConst()
 class Variable:
     def __init__(self, name):
         self.name = name
-
-    def sstr(self, ind=0):
-        print(ind * ' ', self.name, sep='', end='')
-
+    def __str__(self):
+        return self.name
     def __eq__(self, other):
         if not isinstance(other, Variable):
             return False
@@ -39,15 +34,19 @@ class Variable:
     def copy(self):
         return Variable(self.name)
 
+
 class Predicate:
     def __init__(self, name, *args):
         self.name = name
         self.args = list(args)
-    def sstr(self, ind=0):
-        print(ind * ' ', self.name, '(', sep='', end='')
+    def __str__(self):
+        res = self.name + '('
+        str_args = []
         for arg in self.args:
-            arg.sstr(ind+1)
-        print(ind * ' ', ')', sep='', end='')
+            str_args.append(str(arg))
+        res += ','.join(str_args)
+        res += ')'
+        return res
     def __eq__(self, other):
         if not isinstance(other, Predicate):
             return False
@@ -80,12 +79,18 @@ class Formula:
     def __init__(self, operation, *formulas):        
         self.operation = operation
         self.formulas = list(formulas)
-
-    def sstr(self, ind=0):
-        print(ind * ' ', self.operation[::-1], sep='', end='')
+    def __str__(self):
+        str_formulas = []
         for formula in self.formulas:
-            formula.sstr(ind+1)
-    
+            str_formulas.append(str(formula))
+        if len(str_formulas) == 1:
+            res = self.operation[::-1] + '(' + str_formulas[0] + ')'
+        elif len(str_formulas) == 2:
+            if self.operation == '>':
+                res = '(' + str_formulas[0] + ' -> ' + str_formulas[1] + ')'
+            else:
+                res = '(' + str_formulas[0] + ' ' + self.operation + ' ' + str_formulas[1] + ')'
+        return res
     def put_term(self, varname, term):
         if self.operation[0] == varname:
             return
@@ -95,9 +100,7 @@ class Formula:
         consts = []
         for formula in self.formulas:
             if len(formula.get_consts()):
-                # print(formula.get_consts())
                 consts += formula.get_consts()
-                # consts.append(*formula.get_consts())
         return list(set(consts))
     def copy(self):
         copies = []
@@ -138,7 +141,6 @@ def str_to_reverse_polish_notation(string: str):
     curr_ind = 0
     out_queue = []
     while curr_ind < len(string):
-        # print(stack, out_queue)
         if string[curr_ind] in ('A', 'E'):
             stack.append(string[curr_ind])
         elif isvariable(string[curr_ind]):
@@ -183,7 +185,6 @@ def str_to_reverse_polish_notation(string: str):
 
 def str_to_formula(string: str):
     queue = str_to_reverse_polish_notation(string)
-    # print(queue)
     stack = ['#']
     for sym in queue:
         if isvariable(sym): # Const
@@ -227,7 +228,6 @@ class SemanticTableaux:
         
         t_ind = 0
         f_ind = 0
-        # print(order, T, F)
         for i in range(len(order)):
             if order[i]:
                 if isinstance(T[t_ind], Predicate):
@@ -243,28 +243,13 @@ class SemanticTableaux:
                     self.F.append(F[f_ind])
                     self.order.append(False)
                 f_ind += 1
-        # for t in T:
-        #     if isinstance(t, Predicate):
-        #         self.closedT.append(t)
-        #     else:
-        #         self.T.append(t)
-        # for f in F:
-        #     if isinstance(f, Predicate):
-        #         self.closedF.append(f)
-        #     else:
-        #         self.F.append(f)
-        # if order is None:
-        #     self.order = [True for i in range(len(self.T))] + [False for i in range(len(self.F))]
-        # else:
-        #     self.order = order
 
-    def isclosed(self):
+    def isclosed(self, ind=None, output=False):
         for t in self.closedT:
             for f in self.closedF:
                 if t == f:
-                    # t.sstr()
-                    # print()
-                    # print(t, f)
+                    if not (ind is None) and output:
+                        print(ind * indent, 'same: ', str(t), sep='')
                     return True
         return False
 
@@ -278,33 +263,30 @@ class SemanticTableaux:
             consts += formula.get_consts()
         for formula in self.closedF:
             consts += formula.get_consts()
-        # return consts
         return list(set(consts))
 
-    def sstr(self):
-        print('T:', end='')
+    def __str__(self):
+        res = '< '
+        str_T = []
+        str_F = []
         for t in self.T:
-            t.sstr()
-            print(',', end='')
-        print('F:', end='')
-        for f in self.F:
-            f.sstr()
-            print(',', end='')
-        print('closedT:', end='')
+            str_T.append(str(t))
         for t in self.closedT:
-            t.sstr()
-            print(',', end='')
-        print('closedF:', end='')
+            str_T.append(str(t))
+        for f in self.F:
+            str_F.append(str(f))
         for f in self.closedF:
-            f.sstr()        
-            print(',', end='')
+            str_F.append(str(f))
+        res += ', '.join(str_T)
+        res += ' | '
+        res += ', '.join(str_F)
+        res += ' >'
+        return res
 
-def compute(st: SemanticTableaux):
-    # rule
-    # compute new tables
-    st.sstr()
-    print()
-    if st.isclosed():
+def compute(st: SemanticTableaux, ind=0, output=False):
+    if output:
+        print(ind * indent, str(st), sep='')
+    if st.isclosed(ind, output):
         return True
     if len(st.order) == 0:
         return False
@@ -313,28 +295,32 @@ def compute(st: SemanticTableaux):
         if not consts:
             consts = [start_const]
         formula = st.T[0]
-        print('L', formula.operation)
+        if output:
+            if formula.operation == '>':
+                print(ind * indent, 'L', '->', ' for ', str(formula), sep='')
+            else:
+                print(ind * indent, 'L', formula.operation[-1], ' for ', str(formula), sep='')
         st.T = st.T[1:]
         st.order = st.order[1:]
         if formula.operation == '&':
             new_st = SemanticTableaux(st.T + formula.formulas, st.F, st.closedT, st.closedF, st.order + [True, True])
-            return compute(new_st)
+            return compute(new_st, ind+1, output)
         elif formula.operation == 'V':
             new_st1 = SemanticTableaux(st.T + [formula.formulas[0]], st.F, st.closedT, st.closedF, st.order + [True])
             new_st2 = SemanticTableaux(st.T + [formula.formulas[1]], st.F, st.closedT, st.closedF, st.order + [True])
-            return compute(new_st1) and compute(new_st2)
+            return compute(new_st1, ind+1, output) and compute(new_st2, ind+1, output)
         elif formula.operation == '>':
             new_st1 = SemanticTableaux(st.T + [formula.formulas[1]], st.F, st.closedT, st.closedF, st.order + [True])
             new_st2 = SemanticTableaux(st.T, st.F + [formula.formulas[0]], st.closedT, st.closedF, st.order + [False])
-            return compute(new_st1) and compute(new_st2)
+            return compute(new_st1, ind+1, output) and compute(new_st2, ind+1, output)
         elif formula.operation == '~':
             new_st = SemanticTableaux(st.T, st.F + formula.formulas, st.closedT, st.closedF, st.order + [False])
-            return compute(new_st)
+            return compute(new_st, ind+1, output)
         elif formula.operation[-1] == 'E':
             in_formula = formula.formulas[0].copy()
             in_formula.put_term(formula.operation[0], nextConst())
             new_st = SemanticTableaux(st.T + [in_formula], st.F, st.closedT, st.closedF, st.order + [True])
-            return compute(new_st)
+            return compute(new_st, ind+1, output)
         elif formula.operation[-1] == 'A':
             extra_orders = []
             extra_T = []
@@ -346,35 +332,37 @@ def compute(st: SemanticTableaux):
             extra_T.append(formula)
             extra_orders.append(True)
             new_st = SemanticTableaux(st.T + extra_T, st.F, st.closedT, st.closedF, st.order + extra_orders)
-            return compute(new_st)
+            return compute(new_st, ind+1, output)
     else:
         consts = st.get_consts()
         if not consts:
             consts = [start_const]
         formula = st.F[0]
-        print('R', formula.operation)
+        if output:
+            if formula.operation == '>':
+                print(ind * indent, 'R', '->', ' for ', str(formula), sep='')
+            else:
+                print(ind * indent, 'R', formula.operation[-1], ' for ', str(formula), sep='')
         st.F = st.F[1:]
-        # print(st.order)
         st.order = st.order[1:]
-        # print(st.order)
         if formula.operation == '&':
             new_st1 = SemanticTableaux(st.T, st.F + [formula.formulas[0]], st.closedT, st.closedF, st.order + [False])
             new_st2 = SemanticTableaux(st.T, st.F + [formula.formulas[1]], st.closedT, st.closedF, st.order + [False])
-            return compute(new_st1) and compute(new_st2)
+            return compute(new_st1, ind+1, output) and compute(new_st2, ind+1, output)
         elif formula.operation == 'V':
             new_st = SemanticTableaux(st.T, st.F + formula.formulas, st.closedT, st.closedF, st.order + [False, False])
-            return compute(new_st)
+            return compute(new_st, ind+1, output)
         elif formula.operation == '>':
             new_st = SemanticTableaux(st.T + [formula.formulas[0]], st.F + [formula.formulas[1]], st.closedT, st.closedF, st.order + [True, False])
-            return compute(new_st)
+            return compute(new_st, ind+1, output)
         elif formula.operation == '~':
             new_st = SemanticTableaux(st.T + formula.formulas, st.F, st.closedT, st.closedF, st.order + [True])
-            return compute(new_st)
+            return compute(new_st, ind+1, output)
         elif formula.operation[-1] == 'A':
             in_formula = formula.formulas[0].copy()
             in_formula.put_term(formula.operation[0], nextConst())
             new_st = SemanticTableaux(st.T, st.F + [in_formula], st.closedT, st.closedF, st.order + [False])
-            return compute(new_st)
+            return compute(new_st, ind+1, output)
         elif formula.operation[-1] == 'E':
             extra_orders = []
             extra_F = []
@@ -386,31 +374,8 @@ def compute(st: SemanticTableaux):
             extra_F.append(formula)
             extra_orders.append(False)
             new_st = SemanticTableaux(st.T, st.F + extra_F, st.closedT, st.closedF, st.order + extra_orders)
-            return compute(new_st)
+            return compute(new_st, ind+1, output)
         
-def is_valid_formula(string: str):
+def is_valid_formula(string: str, output=False):
     formula = str_to_formula(string)
-    return compute(SemanticTableaux([], [formula]))
-
-
-
-
-formulas_str = [
-    'Ex P(x) -> ~Ax ~P(x)',
-    'ExAy R(x,y) -> AyEx R(x,y)',
-    'Ax (P(x) -> Ey R(x, y)) -> (Ex ~P(x) V AxEzR(x, z))',
-    'Ax Ey Az (P(x, y) -> P(y, z))',
-    'Ex Ay Ez (P(x, y) -> P(y, z))',
-    'Ax (P(x)&R(x)) -> (Ax P(x) & Ax R(x))',
-    '(Ax P(x) & Ax R(x)) -> Ax (P(x)&R(x))',
-    'Ex (P(x) V R(x)) -> (Ex P(x) V Ex R(x))',
-    '(Ex P(x) V Ex R(x)) -> Ex (P(x) V R(x))',
-    '(Ax P(x) V R(y)) -> Ax (P(x) V R(y))',
-    'Ax (P(x) V R(y)) -> (Ax P(x) V R(y))',
-    'Ey Ax Q(x, y) -> Ax Ey Q(x, y)'
-]
-
-for formula_str in formulas_str:
-    print(formula_str)
-    print(is_valid_formula(formula_str))
-    print()
+    return compute(SemanticTableaux([], [formula]), output=output)
