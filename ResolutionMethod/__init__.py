@@ -1,5 +1,67 @@
 from Formulas import *
-from random import randrange, shuffle
+from random import randrange
+
+def collapse_disjunct(predicates, p1, p2):
+    subst = unify_predicates(p1, p2)
+    formula = p1
+    for predicate in predicates:
+        formula = Formula('V', predicate, formula)
+    formula.put_terms(subst)
+    formula.rename_full(dict())
+    return extract_disjunct_set(formula).disjuncts[0]
+
+def resolute_disjuncts(predicates1, predicates2, subst):    # predicates1 and predicates2 could be empty
+    if len(predicates1) == 0 and len(predicates2) == 0:
+        return [EmptyDisjunct()]
+    if len(predicates1) != 0:
+        formula = predicates1[0]
+        for predicate in predicates1[1:]:
+            formula = Formula('V', predicate, formula)
+    else:
+        formula = predicates2[0]
+    for predicate in predicates2:
+        formula = Formula('V', predicate, formula)
+    formula.put_terms(subst)
+    formula.rename_full(dict())
+    return [extract_disjunct_set(formula).disjuncts[0]]
+
+def resolution(disjunct1, disjunct2):
+    formula1 = disjunct1.predicates[0]
+    for predicate in disjunct1.predicates[1:]:
+        formula1 = Formula('V', predicate, formula1)
+    formula1.rename_full(dict())
+    formula2 = disjunct2.predicates[0]
+    for predicate in disjunct2.predicates[1:]:
+        formula2 = Formula('V', predicate, formula2)
+    formula2.rename_full(dict())
+    d1, d2 = extract_disjunct_set(formula1).disjuncts[0], extract_disjunct_set(formula2).disjuncts[0]
+    new_disjuncts = []
+    for i in range(len(d1.predicates)):
+        for j in range(len(d2.predicates)):
+            if isinstance(d1.predicates[i], Formula) and d1.predicates[i].operation == '~' and isinstance(d2.predicates[j], Predicate):
+                p1 = d1.predicates[i].formulas[0]
+                p2 = d2.predicates[j]
+            elif isinstance(d2.predicates[j], Formula) and d2.predicates[j].operation == '~' and isinstance(d1.predicates[i], Predicate):
+                p1 = d1.predicates[i]
+                p2 = d2.predicates[j].formulas[0]
+            else:
+                continue
+            subst = unify_predicates(p1, p2)
+            if not (subst is None):
+                predicates1 = []
+                for k in range(len(d1.predicates)):
+                    if k != i:
+                        predicates1.append(d1.predicates[k].copy())
+                predicates2 = []
+                for k in range(len(d2.predicates)):
+                    if k != j:
+                        predicates2.append(d2.predicates[k].copy())
+                new_disjuncts += resolute_disjuncts(predicates1, predicates2, subst)
+    return new_disjuncts
+    
+class EmptyDisjunct:
+    def __init__(self):
+        pass
 
 class Disjunct:
     def __init__(self, *predicates):    # could be Formula('~', Predicate)
@@ -13,10 +75,25 @@ class Disjunct:
         for predicate in self.predicates:
             if isinstance(predicate, Formula) and predicate.operation == '~':
                 return True
-    # def collapse(self):
-    #     for i in range(len(self.predicates)):
-    #         for j in range(len(self.predicates)):
+    def collapse(self):
+        new_disjuncts = []
+        for i in range(len(self.predicates)):
+            for j in range(i + 1, len(self.predicates)):
+                p1 = self.predicates[i]
+                p2 = self.predicates[j]
+                subst = unify_predicates(p1, p2)
+                if not (subst is None):
+                    predicates = []
+                    for k in range(len(self.predicates)):
+                        if k != i and k != j:
+                            predicates.append(self.predicates[k].copy())
+                    new_disjuncts.append(collapse_disjunct(predicates, p1.copy(), p2.copy()))
+        new_new_disjuncts = []
+        for disjunct in new_disjuncts:
+            new_new_disjuncts += disjunct.collapse()
+        return new_disjuncts + new_new_disjuncts
 
+                        
 
 class Disjunct_set:
     def __init__(self, *disjuncts):
@@ -26,9 +103,11 @@ class Disjunct_set:
         for disjunct in self.disjuncts:
             str_disjs.append(str(disjunct))
         return ', '.join(str_disjs)
-    # def collapse(self):
-    #     for disjunct in self.disjuncts:
-    #         disjunct.collapse()
+    def collapse(self):
+        new_disjuncts = []
+        for disjunct in self.disjuncts:
+            new_disjuncts += disjunct.collapse()
+        self.disjuncts += new_disjuncts
     def separate(self): # by empty erbran interpretation
         self.T = []
         self.F = []
@@ -37,9 +116,17 @@ class Disjunct_set:
                 self.T.append(disjunct)
             else:
                 self.F.append(disjunct)
-
-
-
+    def make_resolutions(self): # I-resolution compute
+        new_disjuncts = []
+        for t in self.T:
+            for f in self.F:
+                new_disjuncts += resolution(t, f)
+        self.disjuncts += new_disjuncts
+    def has_empty_disjunct(self):
+        for disjunct in self.disjuncts:
+            if isinstance(disjunct, EmptyDisjunct):
+                return True
+        return False
 
 def extract_disjunct_set(formula):
     if isinstance(formula, Predicate) or formula.operation == '~':
@@ -74,7 +161,7 @@ def unify_predicates(predicate1, predicate2):   # also unify Formula('~', Predic
         eq_system.append([predicate1.args[i], predicate2.args[i]])
     
     unified = False
-    while not unified:
+    while not unified and len(eq_system) > 0:
         eq_system2 = []
         for i in range(len(eq_system)):
             for j in range(i + 1, len(eq_system)):
@@ -125,9 +212,16 @@ def unify_predicates(predicate1, predicate2):   # also unify Formula('~', Predic
     return eq_system
 
 
-# def resolution_compute(disjunct_set: Disjunct_set):
-#     disjunct_set.separate()
-
+def resolution_compute(disjunct_set: Disjunct_set):
+    while True:
+        disjunct_set.collapse()
+        if disjunct_set.has_empty_disjunct():
+            break
+        disjunct_set.separate()
+        disjunct_set.make_resolutions()
+        if disjunct_set.has_empty_disjunct():
+            break
+    return True
 
 def resolution_method(formula: Formula, output=False):
     formula = Formula('~', formula.copy())
@@ -157,4 +251,5 @@ def resolution_method(formula: Formula, output=False):
     disjunction_set = extract_disjunct_set(formula)
     if output:
         print('Disjunction set:', str(disjunction_set))
+    resolution_compute(disjunction_set)
     return True

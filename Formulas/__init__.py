@@ -16,6 +16,8 @@ class Constant:
         return hash(self.name)
     def rename_variables(self, names, name_suffixes):
         pass    # no variables
+    def rename_full(self, names):
+        pass    # no variables to rename
     def contains(self, var):
         return False
 
@@ -187,8 +189,7 @@ class Predicate:
     def rename_variables(self, names, name_suffixes):
         for arg in self.args:
             arg.rename_variables(names, name_suffixes)
-    def rename_full(self):
-        names = dict()
+    def rename_full(self, names):
         for arg in self.args:
             arg.rename_full(names)
 
@@ -243,6 +244,9 @@ class Formula:
             self.operation = names[varname] + self.operation[-1]
         for formula in self.formulas:
             formula.rename_variables(names.copy(), name_suffixes)
+    def rename_full(self, names):   # for formulas without quantifiers
+        for formula in self.formulas:
+            formula.rename_full(names)
     def remove_implications(self):
         if self.operation == '>':
             self.operation = 'V'
@@ -322,10 +326,13 @@ class Formula:
                 self.formulas[1].transform_to_CNF()
     def transform_to_SNF(self, names, variables):
         if self.operation[-1] == 'A':
-            variables.append(self.operation[:-1])
+            variables.append(Variable(self.operation[:-1]))
             self.formulas[0].transform_to_SNF(names, variables)
         elif self.operation[-1] == 'E':
-            names[self.operation[:-1]] = nextFunctional(variables)
+            if len(variables) == 0:
+                names[self.operation[:-1]] = nextConst()
+            else:
+                names[self.operation[:-1]] = nextFunctional(variables)
             self.formulas[0].transform_to_SNF(names, variables)
             self.operation = self.formulas[0].operation
             self.formulas = self.formulas[0].formulas
@@ -333,7 +340,7 @@ class Formula:
             for formula in self.formulas:
                 if isinstance(formula, Predicate):
                     for name, term in names.items():
-                        formula.put_term(name, term)
+                        formula.put_term(name, term.copy())
                 else:
                     formula.transform_to_SNF(names, variables)
 
