@@ -174,6 +174,8 @@ def unify_predicates(predicate1, predicate2):   # also unify Formula('~', Predic
             return None
         predicate1 = predicate1.formulas[0]
         predicate2 = predicate2.formulas[0]
+    elif isinstance(predicate2, Formula):
+        return None
     if predicate1.name != predicate2.name:
         return None
     eq_system = []
@@ -229,6 +231,9 @@ def unify_predicates(predicate1, predicate2):   # also unify Formula('~', Predic
             if eq_ind == eq_ind_start:
                 unified = True
                 break
+    for eq in eq_system:
+        if isinstance(eq[0], Constant):
+            return None
     return eq_system
 
 
