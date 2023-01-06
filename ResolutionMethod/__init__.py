@@ -41,10 +41,8 @@ def extract_disjunct_set(formula):
         return extract_disjunct_set(formula.formulas[0])    # 'A' or 'E'
 
 
-def unify_predicates(predicate1, predicate2, output=False):   # also unify Formula('~', Predicate)
-    negation = False
+def unify_predicates(predicate1, predicate2):   # also unify Formula('~', Predicate)
     if isinstance(predicate1, Formula):
-        negation = True
         predicate1 = predicate1.formulas[0]
         predicate2 = predicate2.formulas[0]
     eq_system = []
@@ -74,8 +72,7 @@ def unify_predicates(predicate1, predicate2, output=False):   # also unify Formu
                 changed = True
             elif isinstance(curr_eq[0], Functional) and isinstance(curr_eq[1], Functional):
                 if curr_eq[0].name != curr_eq[1].name:
-                    print('Cannot unify')
-                    exit(1)
+                    return None
                 eq_system = eq_system[:eq_ind] + eq_system[eq_ind + 1:]
                 for i in range(len(curr_eq[0].args)):
                     eq_system.append([curr_eq[0].args[i], curr_eq[1].args[i]])
@@ -84,6 +81,8 @@ def unify_predicates(predicate1, predicate2, output=False):   # also unify Formu
                 for i in range(len(eq_system)):
                     if i == eq_ind:
                         continue
+                    if curr_eq[0] == eq_system[i][0] and curr_eq[0] != eq_system[i][1]:
+                        return None
                     if isinstance(eq_system[i][1], Variable) and eq_system[i][1] == curr_eq[0]:
                         eq_system[i][1] = curr_eq[1]
                         changed = True
@@ -92,12 +91,9 @@ def unify_predicates(predicate1, predicate2, output=False):   # also unify Formu
                         changed = True
             eq_ind = (eq_ind + 1) % len(eq_system)
             if eq_ind == eq_ind_start:
-                # maybe cannot be unified because of NElim, but supposed to be unified
                 unified = True
                 break
-    for eq in eq_system:
-        print(str(eq[0]), str(eq[1]))
-    # print(eq_system)
+    return eq_system
 
 
 def resolution_method(formula: Formula, output=False):

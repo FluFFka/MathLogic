@@ -46,6 +46,16 @@ class Variable:
         if var.name == self.name:
             return True
         return False
+    def rename_full(self, names):
+        if not self.name in names:
+            names[self.name] = nextVariableName()
+        self.name = names[self.name]
+
+var__ = -1
+def nextVariableName():
+    global var__
+    var__ += 1
+    return 'x' + str(var__)
 
 
 class Functional:
@@ -102,6 +112,9 @@ class Functional:
                 if arg == var:
                     return True
         return False
+    def rename_full(self, names):
+        for arg in self.args:
+            arg.rename_full(names)
 
 func__ = -1
 def nextFunctional(args):
@@ -155,6 +168,10 @@ class Predicate:
     def rename_variables(self, names, name_suffixes):
         for arg in self.args:
             arg.rename_variables(names, name_suffixes)
+    def rename_full(self):
+        names = dict()
+        for arg in self.args:
+            arg.rename_full(names)
 
 
 class Formula:
