@@ -9,6 +9,13 @@ class Disjunct:
         for predicate in self.predicates:
             str_preds.append(str(predicate))
         return ' V '.join(str_preds)
+    def has_negative(self):
+        for predicate in self.predicates:
+            if isinstance(predicate, Formula) and predicate.operation == '~':
+                return True
+    # def collapse(self):
+    #     for i in range(len(self.predicates)):
+    #         for j in range(len(self.predicates)):
 
 
 class Disjunct_set:
@@ -19,6 +26,19 @@ class Disjunct_set:
         for disjunct in self.disjuncts:
             str_disjs.append(str(disjunct))
         return ', '.join(str_disjs)
+    # def collapse(self):
+    #     for disjunct in self.disjuncts:
+    #         disjunct.collapse()
+    def separate(self): # by empty erbran interpretation
+        self.T = []
+        self.F = []
+        for disjunct in self.disjuncts:
+            if disjunct.has_negative():
+                self.T.append(disjunct)
+            else:
+                self.F.append(disjunct)
+
+
 
 
 def extract_disjunct_set(formula):
@@ -43,8 +63,12 @@ def extract_disjunct_set(formula):
 
 def unify_predicates(predicate1, predicate2):   # also unify Formula('~', Predicate)
     if isinstance(predicate1, Formula):
+        if predicate1.operation != '~' or not isinstance(predicate2, Formula) or predicate2.operation != '~' or not isinstance(predicate1.formulas[0], Predicate) or not isinstance(predicate2.formulas[0], Predicate):
+            return None
         predicate1 = predicate1.formulas[0]
         predicate2 = predicate2.formulas[0]
+    if predicate1.name != predicate2.name:
+        return None
     eq_system = []
     for i in range(len(predicate1.args)):
         eq_system.append([predicate1.args[i], predicate2.args[i]])
@@ -77,23 +101,32 @@ def unify_predicates(predicate1, predicate2):   # also unify Formula('~', Predic
                 for i in range(len(curr_eq[0].args)):
                     eq_system.append([curr_eq[0].args[i], curr_eq[1].args[i]])
                 changed = True
-            elif isinstance(curr_eq[0], Variable) and not curr_eq[1].contains(curr_eq[0]):
-                for i in range(len(eq_system)):
-                    if i == eq_ind:
-                        continue
-                    if curr_eq[0] == eq_system[i][0] and curr_eq[0] != eq_system[i][1]:
-                        return None
-                    if isinstance(eq_system[i][1], Variable) and eq_system[i][1] == curr_eq[0]:
-                        eq_system[i][1] = curr_eq[1]
-                        changed = True
-                    if isinstance(eq_system[i][1], Functional) and eq_system[i][1].contains(curr_eq[0]):
-                        eq_system[i][1].put_term(curr_eq[0].name, curr_eq[1])
-                        changed = True
+            elif isinstance(curr_eq[0], Variable):
+                if not curr_eq[1].contains(curr_eq[0]):
+                    for i in range(len(eq_system)):
+                        if i == eq_ind:
+                            continue
+                        if curr_eq[0] == eq_system[i][0] and curr_eq[0] != eq_system[i][1]:
+                            return None
+                        if isinstance(eq_system[i][1], Variable) and eq_system[i][1] == curr_eq[0]:
+                            eq_system[i][1] = curr_eq[1]
+                            changed = True
+                        if isinstance(eq_system[i][1], Functional) and eq_system[i][1].contains(curr_eq[0]):
+                            eq_system[i][1].put_term(curr_eq[0].name, curr_eq[1])
+                            changed = True
+                else:
+                    return None
+            if changed:
+                break
             eq_ind = (eq_ind + 1) % len(eq_system)
             if eq_ind == eq_ind_start:
                 unified = True
                 break
     return eq_system
+
+
+# def resolution_compute(disjunct_set: Disjunct_set):
+#     disjunct_set.separate()
 
 
 def resolution_method(formula: Formula, output=False):

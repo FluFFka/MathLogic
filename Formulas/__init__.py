@@ -87,6 +87,15 @@ class Functional:
                 self.args[i] = term
             elif isinstance(self.args[i], Functional):
                 self.args[i].put_term(varname, term)
+    def put_terms(self, substitution):
+        for i in range(len(self.args)):
+            arg = self.args[i]
+            if isinstance(arg, Variable):
+                for subst in substitution:
+                    if subst[0] == arg:
+                        self.args[i] = subst[1].copy()
+            elif isinstance(arg, Functional):
+                arg.put_terms(substitution)
     def get_consts(self):
         consts = []
         for arg in self.args:
@@ -152,6 +161,16 @@ class Predicate:
                 self.args[i] = term
             elif isinstance(self.args[i], Functional):
                 self.args[i].put_term(varname, term)
+    def put_terms(self, substitution):
+        for i in range(len(self.args)):
+            arg = self.args[i]
+            if isinstance(arg, Variable):
+                for subst in substitution:
+                    if subst[0] == arg:
+                        self.args[i] = subst[1].copy()
+            elif isinstance(arg, Functional):
+                arg.put_terms(substitution)
+                        
     def get_consts(self):
         consts = []
         for arg in self.args:
@@ -191,10 +210,13 @@ class Formula:
                 res = '(' + str_formulas[0] + ' ' + self.operation + ' ' + str_formulas[1] + ')'
         return res
     def put_term(self, varname, term):
-        if self.operation[0] == varname:
+        if self.operation[:-1] == varname:
             return
         for formula in self.formulas:
             formula.put_term(varname, term)
+    def put_terms(self, substitution):  # formula must be without quantifiers
+        for formula in self.formulas:
+            formula.put_terms(substitution)
     def get_consts(self):
         consts = []
         for formula in self.formulas:

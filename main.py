@@ -28,8 +28,17 @@ for formula_str in formulas_str:
     resolution_method(formula, output=True)
     # print(f'Formula {str(formula)} is valid?', resolution_method(formula, output=True))
 
-# print(unify_predicates(Predicate('P', Constant('c'), Variable('x'), Functional('f', Variable('x'))),
-#                         Predicate('P', Constant('c'), Variable('y'), Variable('y'))))
 
-# print(unify_predicates(Predicate('P', Functional('f', Variable('x'), Variable('y')), Variable('z'), Functional('h', Variable('z'), Variable('y'))),
-#                         Predicate('P', Functional('f', Variable('y'), Variable('x')), Functional('g', Variable('y')), Variable('v'))))
+# p1 = Predicate('P', Functional('f', Variable('x'), Variable('y')), Variable('z'), Functional('h', Variable('z'), Variable('y')))
+# p2 = Predicate('P', Functional('f', Variable('y'), Variable('x')), Functional('g', Variable('y')), Variable('v'))
+p1 = Predicate('P', Functional('f', Variable('x'), Functional('g', Variable('y'))), Constant('c'))
+p2 = Predicate('P', Functional('f', Functional('g', Variable('y')), Variable('x')), Variable('y'))
+print(str(p1))
+print(str(p2))
+subst = unify_predicates(p1, p2)
+for eq in subst:
+    print(str(eq[0]), str(eq[1]))
+p1.put_terms(subst)
+p2.put_terms(subst)
+print(str(p1))
+print(str(p2))
