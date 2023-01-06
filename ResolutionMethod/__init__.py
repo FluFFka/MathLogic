@@ -1,4 +1,5 @@
 from Formulas import *
+from random import randrange, shuffle
 
 class Disjunct:
     def __init__(self, *predicates):    # could be Formula('~', Predicate)
@@ -39,6 +40,64 @@ def extract_disjunct_set(formula):
     else:
         return extract_disjunct_set(formula.formulas[0])    # 'A' or 'E'
 
+
+def unify_predicates(predicate1, predicate2, output=False):   # also unify Formula('~', Predicate)
+    negation = False
+    if isinstance(predicate1, Formula):
+        negation = True
+        predicate1 = predicate1.formulas[0]
+        predicate2 = predicate2.formulas[0]
+    eq_system = []
+    for i in range(len(predicate1.args)):
+        eq_system.append([predicate1.args[i], predicate2.args[i]])
+    
+    unified = False
+    while not unified:
+        eq_system2 = []
+        for i in range(len(eq_system)):
+            for j in range(i + 1, len(eq_system)):
+                if eq_system[i] == eq_system[j]:
+                    break
+            else:
+                eq_system2.append(eq_system[i])
+        eq_system = eq_system2
+        eq_ind = randrange(len(eq_system))
+        eq_ind_start = eq_ind
+        changed = False
+        while (not changed):
+            curr_eq = eq_system[eq_ind]
+            if curr_eq[0] == curr_eq[1]:
+                eq_system = eq_system[:eq_ind] + eq_system[eq_ind + 1:]
+                changed = True
+            elif (not isinstance(curr_eq[0], Variable)) and isinstance(curr_eq[1], Variable):
+                eq_system[eq_ind] = curr_eq[::-1]
+                changed = True
+            elif isinstance(curr_eq[0], Functional) and isinstance(curr_eq[1], Functional):
+                if curr_eq[0].name != curr_eq[1].name:
+                    print('Cannot unify')
+                    exit(1)
+                eq_system = eq_system[:eq_ind] + eq_system[eq_ind + 1:]
+                for i in range(len(curr_eq[0].args)):
+                    eq_system.append([curr_eq[0].args[i], curr_eq[1].args[i]])
+                changed = True
+            elif isinstance(curr_eq[0], Variable) and not curr_eq[1].contains(curr_eq[0]):
+                for i in range(len(eq_system)):
+                    if i == eq_ind:
+                        continue
+                    if isinstance(eq_system[i][1], Variable) and eq_system[i][1] == curr_eq[0]:
+                        eq_system[i][1] = curr_eq[1]
+                        changed = True
+                    if isinstance(eq_system[i][1], Functional) and eq_system[i][1].contains(curr_eq[0]):
+                        eq_system[i][1].put_term(curr_eq[0].name, curr_eq[1])
+                        changed = True
+            eq_ind = (eq_ind + 1) % len(eq_system)
+            if eq_ind == eq_ind_start:
+                # maybe cannot be unified because of NElim, but supposed to be unified
+                unified = True
+                break
+    for eq in eq_system:
+        print(str(eq[0]), str(eq[1]))
+    # print(eq_system)
 
 
 def resolution_method(formula: Formula, output=False):

@@ -16,6 +16,9 @@ class Constant:
         return hash(self.name)
     def rename_variables(self, names, name_suffixes):
         pass    # no variables
+    def contains(self, var):
+        return False
+
 
 const__ = -1
 def nextConst():
@@ -39,6 +42,10 @@ class Variable:
     def rename_variables(self, names, name_suffixes):
         if self.name in names:
             self.name = names[self.name]
+    def contains(self, var):
+        if var.name == self.name:
+            return True
+        return False
 
 
 class Functional:
@@ -86,6 +93,15 @@ class Functional:
     def rename_variables(self, names, name_suffixes):
         for arg in self.args:
             arg.rename_variables(names, name_suffixes)
+    def contains(self, var):
+        for arg in self.args:
+            if isinstance(arg, Functional):
+                if arg.contains(var):
+                    return True
+            else:
+                if arg == var:
+                    return True
+        return False
 
 func__ = -1
 def nextFunctional(args):
