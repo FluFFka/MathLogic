@@ -23,7 +23,8 @@ for formula_str in formulas_str:
     formula = str_to_formula(formula_str)
     # print(f'Formula {str(formula)} is valid?', semantic_tableaux_method(formula, output=False))
     # print(f'Formula {str(formula)} is valid?', semantic_tableaux_method(formula, output=False))
-    print(f'Formula {str(formula)} is valid?', resolution_method(formula, output=False))
+    print(f'Formula {str(formula)} is valid?', resolution_method(formula, output=True))
+    print()
     # print(f'Formula {str(formula)} is valid?', resolution_method(formula, output=True))
 
 

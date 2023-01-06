@@ -56,16 +56,22 @@ def resolution(disjunct1, disjunct2):
                 for k in range(len(d2.predicates)):
                     if k != j:
                         predicates2.append(d2.predicates[k].copy())
-                new_disjuncts += resolute_disjuncts(predicates1, predicates2, subst)
+                res = resolute_disjuncts(predicates1, predicates2, subst)
+                # print(disjunct1, disjunct2)
+                res[0].history = [disjunct1, disjunct2]
+                new_disjuncts += res
     return new_disjuncts
-    
+
 class EmptyDisjunct:
     def __init__(self):
-        pass
+        self.history = []
+    def __str__(self):
+        return '[]'
 
 class Disjunct:
     def __init__(self, *predicates):    # could be Formula('~', Predicate)
         self.predicates = list(predicates)
+        self.history = []
     def __str__(self):
         str_preds = []
         for predicate in self.predicates:
@@ -88,12 +94,22 @@ class Disjunct:
                         if k != i and k != j:
                             predicates.append(self.predicates[k].copy())
                     new_disjuncts.append(collapse_disjunct(predicates, p1.copy(), p2.copy()))
+                    new_disjuncts[-1].history = [self]
         new_new_disjuncts = []
         for disjunct in new_disjuncts:
             new_new_disjuncts += disjunct.collapse()
         return new_disjuncts + new_new_disjuncts
 
-                        
+def output_history(disjunct):
+    if len(disjunct.history) == 0:
+        return str(disjunct)
+    elif len(disjunct.history) == 1:
+        print('Collapse', output_history(disjunct.history[0]), '=>', str(disjunct))
+        return str(disjunct)
+    elif len(disjunct.history) == 2:
+        print('Resolution', output_history(disjunct.history[0]), 'and', output_history(disjunct.history[1]), '=>', str(disjunct))
+        return str(disjunct)
+
 
 class Disjunct_set:
     def __init__(self, *disjuncts):
@@ -122,9 +138,13 @@ class Disjunct_set:
             for f in self.F:
                 new_disjuncts += resolution(t, f)
         self.disjuncts += new_disjuncts
-    def has_empty_disjunct(self):
+    def has_empty_disjunct(self, output=False):
         for disjunct in self.disjuncts:
             if isinstance(disjunct, EmptyDisjunct):
+                if output:
+                    output_history(disjunct)
+                    # for dis in self.disjuncts:
+                    #     print(dis.history, [dis], dis)
                 return True
         return False
 
@@ -212,14 +232,14 @@ def unify_predicates(predicate1, predicate2):   # also unify Formula('~', Predic
     return eq_system
 
 
-def resolution_compute(disjunct_set: Disjunct_set):
+def resolution_compute(disjunct_set: Disjunct_set, output=False):
     while True:
         disjunct_set.collapse()
-        if disjunct_set.has_empty_disjunct():
+        if disjunct_set.has_empty_disjunct(output):
             break
         disjunct_set.separate()
         disjunct_set.make_resolutions()
-        if disjunct_set.has_empty_disjunct():
+        if disjunct_set.has_empty_disjunct(output):
             break
     return True
 
@@ -245,11 +265,13 @@ def resolution_method(formula: Formula, output=False):
     formula.transform_to_CNF()
     if output:
         print('Transform to CNF:', str(formula))
+        print('SNF conversion')
     formula.transform_to_SNF(dict(), [])
     if output:
         print('Transform to SNF:', str(formula))
     disjunction_set = extract_disjunct_set(formula)
     if output:
         print('Disjunction set:', str(disjunction_set))
-    resolution_compute(disjunction_set)
+        print('Resolution compute')
+    resolution_compute(disjunction_set, output)
     return True
